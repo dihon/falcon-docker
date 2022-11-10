@@ -1,6 +1,8 @@
 import falcon, os, sys, magic, requests, json, time
 #from falcon_cors import CORS
 
+from flask import Flask, session
+
 #cors_allow_all = CORS(allow_all_origins=True, allow_all_headers=True, allow_all_methods=True,allow_credentials_all_origins=True)
 #cors = cors_allow_all
 #api = falcon.API(middleware=[cors.middleware])
@@ -38,8 +40,8 @@ class DataResource:
         response.status = falcon.HTTP_200
         prm = request.params
 
-        print('getCookie Value: %s' % request.context.get('youfoo', None))
         ses_key = request.get_cookie_values('youfoo')
+        print('getCookie Value: %s' % ses_key)
         if ses_key:
             # do Nothing
             print('ses_key: %s' % ses_key)
@@ -98,7 +100,9 @@ def handle_404(req, resp):
 
 #app = falcon.API()
 
-app = api = falcon.API(middleware=[HandleCORS() ])
+app = api = Flask(__name__)
+
+#app = api = falcon.API(middleware=[HandleCORS() ])
 
 # Enable a simple CORS policy for all responses
 #app = falcon.App(cors_enable=False)
