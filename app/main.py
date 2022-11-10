@@ -38,8 +38,12 @@ class DataResource:
         response.status = falcon.HTTP_200
         prm = request.params
 
-        ses_key = request.context.get('youfoo', None)
-        if ses_key == None or ses_key == '':
+        print('getCookie Value: %s' % request.context.get('youfoo', None))
+        ses_key = request.get_cookie_values('youfoo')
+        if ses_key:
+            # do Nothing
+            print('ses_key: %s' % ses_key)
+        else:
             ses_key = '%s - %s' % ( str(time.time()), hashlib.md5( str(time.time()).encode() ).hexdigest()[-10:])
             response.context.youfoo = ses_key
 
