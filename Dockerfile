@@ -15,6 +15,8 @@ RUN pip3 install mysqlclient
 RUN apk del build-deps
 #python3-mysql.connector
 RUN pip3 install python-magic
+RUN pip3 install mysql-connector-python==8.0.29
+
 # Add demo app
 COPY ./app /app
 WORKDIR /app

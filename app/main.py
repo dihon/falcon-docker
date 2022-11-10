@@ -1,4 +1,4 @@
-import falcon, os, sys, magic, requests, json
+import falcon, os, sys, magic, requests, json, time
 #from falcon_cors import CORS
 
 #cors_allow_all = CORS(allow_all_origins=True, allow_all_headers=True, allow_all_methods=True,allow_credentials_all_origins=True)
@@ -33,10 +33,15 @@ class InventoryResource:
 class DataResource:
     #cors = cors_allow_all
     def on_get(self, request, response):
-        import datetime
+        import datetime, hashlib
         import mysql.connector
         response.status = falcon.HTTP_200
         prm = request.params
+
+        ses_key = response.cookies.get('youfoo')
+        if ses_key == None or ses_key == '':
+            ses_key = '%s - %s' % ( str(time.time()), hashlib.md5( str(time.time()).encode() ).hexdigest()[:-7])
+            response.set_cookie('youfoo', ses_key)
 
         config = {
           'user': 'root',
@@ -57,7 +62,7 @@ class DataResource:
             data.append({'name': '%s %s' % (first_name, last_name), 'id': actor_id})
 
         response.content_type = 'application/json'
-        response.body = json.dumps(data)
+        response.body = json.dumps({'ses': ses_key, 'data': data})
 
 class HelloWorldResource:
 
