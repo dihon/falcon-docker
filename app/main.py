@@ -40,8 +40,8 @@ class DataResource:
 
         ses_key = request.context.get('youfoo', None)
         if ses_key == None or ses_key == '':
-            ses_key = '%s - %s' % ( str(time.time()), hashlib.md5( str(time.time()).encode() ).hexdigest()[:-7])
-            request.context.youfoo = ses_key
+            ses_key = '%s - %s' % ( str(time.time()), hashlib.md5( str(time.time()).encode() ).hexdigest()[-10:])
+            response.context.youfoo = ses_key
 
         config = {
           'user': 'root',
