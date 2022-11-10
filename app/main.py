@@ -30,6 +30,35 @@ class InventoryResource:
         response.content_type = 'application/json'
         response.body = json.dumps(r.json())
 
+class DataResource:
+    #cors = cors_allow_all
+    def on_get(self, request, response):
+        import datetime
+        import mysql.connector
+        response.status = falcon.HTTP_200
+        prm = request.params
+
+        config = {
+          'user': 'root',
+          'password': 'larryvel',
+          'host': 'web.lalaseng.com',
+          'database': 'pcga',
+          'raise_on_warnings': True
+        }
+
+        cnx = mysql.connector.connect(**config)
+        cursor = cnx.cursor()
+
+        query = ("SELECT first_name, last_name, actor_id FROM actor ")
+        cursor.execute(query)
+
+        data = []
+        for (first_name, last_name, actor_id) in cursor:
+            data.append({'name': '%s %s' % (first_name, last_name), 'id': actor_id})
+
+        response.content_type = 'application/json'
+        response.body = json.dumps(data)
+
 class HelloWorldResource:
 
     def on_get(self, request, response):
@@ -71,5 +100,6 @@ app = api = falcon.API(middleware=[HandleCORS() ])
 
 app.add_route('/', HelloWorldResource())
 app.add_route('/inventory', InventoryResource())
+app.add_route('/mysqldata', DataResource())
 app.add_route('/static/{filename}', StaticResource())
 app.add_sink(handle_404, '')
