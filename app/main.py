@@ -45,7 +45,7 @@ class DataResource:
             print('ses_key: %s' % ses_key)
         else:
             ses_key = '%s - %s' % ( str(time.time()), hashlib.md5( str(time.time()).encode() ).hexdigest()[-10:])
-            response.context.youfoo = ses_key
+            response.set_cookie('youfoo', ses_key)
 
         config = {
           'user': 'root',
