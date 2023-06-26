@@ -1,10 +1,12 @@
 from __future__ import division
 import falcon, os, sys, magic, requests, json, time, math, decimal
+
 #from falcon_cors import CORS
 
 #cors_allow_all = CORS(allow_all_origins=True, allow_all_headers=True, allow_all_methods=True,allow_credentials_all_origins=True)
 #cors = cors_allow_all
 #api = falcon.API(middleware=[cors.middleware])
+#cors = CORS(allow_all_origins=True,allow_all_headers=True,allow_all_methods=True)
 
 from falcon.http_status import HTTPStatus
 
@@ -170,11 +172,36 @@ def handle_404(req, resp):
     resp.content_type = 'text/html'
     resp.body = "<style>*{    transition: all 0.6s;}html {    height: 100%;}body{    font-family: 'Lato', sans-serif;    color: #888;    margin: 0;}#main{    display: table;    width: 100%;    height: 100vh;    text-align: center;}.fof{      display: table-cell;      vertical-align: middle;}.fof h1{      font-size: 50px;      display: inline-block;      padding-right: 12px;      animation: type .5s alternate infinite;}@keyframes type{      from{box-shadow: inset -3px 0px 0px #888;}      to{box-shadow: inset -3px 0px 0px transparent;}}</style><div id='main'><div class='fof'><h1>Error 404</h1></div></div>"
 
-#app = falcon.API()
+class TestCookieResource:
+    def on_post(self, request, response):
+        import datetime, hashlib
+        ses_key = '%s - %s' % ( str(time.time()), hashlib.md5( str(time.time()).encode() ).hexdigest()[-10:])
+        response.set_cookie('youfoo', ses_key, max_age=600)
+        response.status = falcon.HTTP_200
+        response.text = 'SUCCESS'
 
+    def on_get(self, request, response):
+        import datetime, hashlib
+        ses_key = request.get_cookie_values('youfoo')
+        print('getCookie Value: %s - %s' % (ses_key, request.cookies.get('youfoo', None)))
+        if ses_key:
+            # do Nothing
+            print('ses_key: %s' % ses_key)
+        else:
+            ses_key = '%s - %s' % ( str(time.time()), hashlib.md5( str(time.time()).encode() ).hexdigest()[-10:])
+            #response.set_header('Set-Cookie', 'youfoo=%s' % ses_key)
+            response.set_cookie('youfoo', ses_key, max_age=600, secure=False, domain='web.lalaseng.com')
+            print(request.cookies)
+        response.status = falcon.HTTP_200
+        response.body = 'HEY HEY : XX  %s XX : NYE NYE' % ses_key
+
+#app = falcon.API()
+#app = falcon.API(middleware=[cors.middleware])
 #app = api = Flask(__name__)
 
 app = api = falcon.API(middleware=[HandleCORS() ])
+
+#app = falcon.App(cors_enable=False)
 
 # Enable a simple CORS policy for all responses
 #app = falcon.App(cors_enable=False)
@@ -187,5 +214,6 @@ app.add_route('/', HelloWorldResource())
 app.add_route('/inventory', InventoryResource())
 app.add_route('/numtowords', NumToWordsResource())
 app.add_route('/mysqldata', DataResource())
+app.add_route('/cookie', TestCookieResource())
 app.add_route('/static/{filename}', StaticResource())
 app.add_sink(handle_404, '')
