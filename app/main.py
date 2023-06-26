@@ -1,4 +1,5 @@
-import falcon, os, sys, magic, requests, json, time
+from __future__ import division
+import falcon, os, sys, magic, requests, json, time, math, decimal
 #from falcon_cors import CORS
 
 #cors_allow_all = CORS(allow_all_origins=True, allow_all_headers=True, allow_all_methods=True,allow_credentials_all_origins=True)
@@ -6,6 +7,47 @@ import falcon, os, sys, magic, requests, json, time
 #api = falcon.API(middleware=[cors.middleware])
 
 from falcon.http_status import HTTPStatus
+
+def numToWords( i = 0 ):
+    limit = 999999999999 # // make this 999999999999999 to support trillioni
+    if i > limit or i < 0:
+        return 'Out of Range!!!'
+    if i == 0:
+        return 'zero'
+    init = 1000000000 # // make this 1000000000000 to support trillion
+    st = 0
+    start = [ 'billion', 'million', 'thousand', '' ] # // make this [ 'trillion', 'billion', 'million', 'thousand' ] to support trillion
+    words = [ '', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen','fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty' ]
+    tens = ['','','twenty','thirty', 'fourty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety']
+    fin = []
+    while i > 0:
+        dv = math.floor(i / init)
+        if dv > 0:
+            h = 100
+            xdv = dv
+            if math.floor(xdv/h) > 0:
+                fin.append( words[math.floor(xdv/h)] + ' hundred' )
+                i -= math.floor(xdv/h) * h * init
+                xdv = xdv % h
+            if xdv <= 20 and xdv > 0:
+                fin.append(words[int(xdv)])
+                if st < len(start):
+                    fin.append(start[st])
+                i -= init * xdv
+            else:
+                t = 10
+                if math.floor(xdv / t) > 0:
+                    fin.append( tens[math.floor(xdv/t)])
+                    i -= math.floor(xdv/t) * t * init
+                    xdv = xdv % t
+                if xdv > 0:
+                    fin.append( words[int(xdv)] )
+                    i -= (xdv) * init
+                if st < len(start):
+                    fin.append(start[st])
+        st += 1
+        init /= 1000
+    return (' '.join(fin)).strip()
 
 class HandleCORS(object):
     def process_request(self, req, resp):
@@ -26,9 +68,25 @@ class InventoryResource:
         pidsXt = pids.split(',')
         pids = ','.join(list(set(pidsXt)))
 
-        r = requests.get('https://production-web-jnj.demandware.net/s/'+prm.get('site','-')+'/dw/shop/v18_3/products/(' + pids + ')?client_id=58b918ff-a2ae-4a37-bd3a-cdcce8ebd790&expand=availability,images')
+        #urlx = 'https://www.'+prm.get('site','-').lower()+'.com/s/'+prm.get('site','-')+'/dw/shop/v18_3/products/(' + pids + ')?client_id=58b918ff-a2ae-4a37-bd3a-cdcce8ebd790&expand=availability,images,prices'
+        urlx = 'https://dev05-web-jnj.demandware.net/s/'+prm.get('site','-')+'/dw/shop/v18_3/products/(' + pids + ')?client_id=58b918ff-a2ae-4a37-bd3a-cdcce8ebd790&expand=availability,images,prices'
+        print('urlx : ' , urlx)
+
+        if prm.get('getfile', '-') != '-':
+            urlx = 'http://web.lalaseng.com/Trainings/AJ/gallery-data.json'
+
+        r = requests.get(urlx)
         response.content_type = 'application/json'
-        response.body = json.dumps(r.json())
+        #print('r.json() :', r.json())
+        response.body = r.text #json.dumps(r.json())
+
+class NumToWordsResource:
+    def on_get(self, request, response):
+        response.status = falcon.HTTP_200
+        prm = request.params
+        num = int(prm.get('number', -1))
+        response.content_type = 'application/json'
+        response.body = json.dumps({'number':num, 'words':numToWords(num)})
 
 class DataResource:
     #cors = cors_allow_all
@@ -56,17 +114,33 @@ class DataResource:
         }
 
         cnx = mysql.connector.connect(**config)
-        cursor = cnx.cursor()
+        #cursor = cnx.cursor()
+        cursor = cnx.cursor(dictionary=True)
 
-        query = ("SELECT first_name, last_name, actor_id FROM actor ")
+        query = ("SELECT * from offices")
+        if prm.get('q', '-') != '-':
+            query = (prm['q'])
+
         cursor.execute(query)
 
         data = []
-        for (first_name, last_name, actor_id) in cursor:
-            data.append({'name': '%s %s' % (first_name, last_name), 'id': actor_id})
+        if cursor.rowcount:
+            for c in cursor:
+                data.append(c)
 
         response.content_type = 'application/json'
-        response.body = json.dumps({'ses': ses_key, 'data': data})
+        if prm.get('debug', '-') == '1':
+            response.content_type = 'text/html'
+            response.body = '<pre>%s</pre>' % json.dumps({'ses': ses_key, 'data': data}, cls=DecimalEncoder, indent=4) 
+        else:
+            response.body = json.dumps({'ses': ses_key, 'data': data}, cls=DecimalEncoder)
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return float(o)
+        return super(DecimalEncoder, self).default(o)
+
 
 class HelloWorldResource:
 
@@ -111,6 +185,7 @@ app = api = falcon.API(middleware=[HandleCORS() ])
 
 app.add_route('/', HelloWorldResource())
 app.add_route('/inventory', InventoryResource())
+app.add_route('/numtowords', NumToWordsResource())
 app.add_route('/mysqldata', DataResource())
 app.add_route('/static/{filename}', StaticResource())
 app.add_sink(handle_404, '')
